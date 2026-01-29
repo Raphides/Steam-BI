@@ -41,7 +41,6 @@ SELECT
     ANO,
     QTD_LANCAMENTOS,
     PRECO_MEDIO,
-    LAG(PRECO_MEDIO) OVER (ORDER BY ANO) AS PRECO_ANO_ANTERIOR,
     ROUND(PRECO_MEDIO - LAG(PRECO_MEDIO) OVER (ORDER BY ANO), 2) AS VARIACAO_ANUAL
 FROM PRECO_ANUAL
 ORDER BY ANO DESC;
@@ -53,26 +52,27 @@ ORDER BY ANO DESC;
 WITH ANALISE_LOCALIZACAO AS (
     SELECT 
         CASE 
-            WHEN F.TEM_PTB_AUD = TRUE THEN 'Dublado e Legendado'
-            WHEN F.TEM_PTB_ITF = TRUE THEN 'Apenas Legenda/Interface'
-            ELSE 'Sem Português'
+            WHEN F.TEM_PTB_AUD = TRUE THEN '1. Dublado e Legendado (Experiência Completa)'
+            WHEN F.TEM_PTB_ITF = TRUE THEN '2. Apenas Legenda/Interface'
+            ELSE '3. Sem Português'
         END AS NIVEL_TRADUCAO,
         COUNT(F.SRK_JGO) AS QTD_JOGOS,
-        ROUND(AVG(F.NTA_USR), 2) AS MEDIA_NOTA_USUARIO
+        ROUND(AVG(F.NTA_MTC), 2) AS MEDIA_METACRITIC
     FROM DW.FAT_JGO F
+    WHERE F.NTA_MTC > 0
     GROUP BY 
         CASE 
-            WHEN F.TEM_PTB_AUD = TRUE THEN 'Dublado e Legendado'
-            WHEN F.TEM_PTB_ITF = TRUE THEN 'Apenas Legenda/Interface'
-            ELSE 'Sem Português'
+            WHEN F.TEM_PTB_AUD = TRUE THEN '1. Dublado e Legendado (Experiência Completa)'
+            WHEN F.TEM_PTB_ITF = TRUE THEN '2. Apenas Legenda/Interface'
+            ELSE '3. Sem Português'
         END
 )
 SELECT 
     NIVEL_TRADUCAO,
     QTD_JOGOS,
-    MEDIA_NOTA_USUARIO
+    MEDIA_METACRITIC
 FROM ANALISE_LOCALIZACAO
-ORDER BY MEDIA_NOTA_USUARIO DESC;
+ORDER BY MEDIA_METACRITIC DESC;
 
 
 -- ----------------------------------------------------------------------------
@@ -141,7 +141,7 @@ WITH JOIAS_ESCONDIDAS AS (
     WHERE DOFR.VLR_PRC < 10.00
       AND F.NTA_MTC >= 85
 )
-SELECT 
+SELECT DISTINCT
     NOME_JOGO,
     GENERO,
     PRECO,
@@ -152,23 +152,94 @@ LIMIT 20;
 
 
 -- ----------------------------------------------------------------------------
--- 7. ANÁLISE DE SATURAÇÃO: GÊNEROS COM MAIS LANÇAMENTOS RECENTES
+
+-- 7. ANÁLISE DE SATURAÇÃO: MATRIZ DE GÊNEROS POR ANO (2003-2025)
+
 -- ----------------------------------------------------------------------------
-WITH LANCAMENTOS_RECENTES AS (
+
+WITH DADOS_BASE AS (
+
+    -- CTE: Prepara os dados brutos filtrando o período desejado
+
     SELECT 
-        DG.NME_GEN AS GENERO,
-        COUNT(F.SRK_JGO) AS QTD_2023_2024
+
+        DG.NME_GEN,
+
+        F.ANO_LNC,
+
+        F.SRK_JGO
+
     FROM DW.FAT_JGO F
+
     INNER JOIN DW.DIM_GEN DG ON F.SRK_GEN = DG.SRK_GEN
-    WHERE F.ANO_LNC >= 2023
-    GROUP BY DG.NME_GEN
+
+    WHERE F.ANO_LNC BETWEEN 2003 AND 2025
+
 )
+
 SELECT 
-    GENERO,
-    QTD_2023_2024,
-    ROUND((QTD_2023_2024 * 100.0 / (SELECT SUM(QTD_2023_2024) FROM LANCAMENTOS_RECENTES)), 2) AS PORCENTAGEM_MERCADO
-FROM LANCAMENTOS_RECENTES
-ORDER BY QTD_2023_2024 DESC;
+
+    NME_GEN AS GENERO,
+
+    -- Colunas pivotadas (Aplicadas sobre a CTE)
+
+    SUM(CASE WHEN ANO_LNC = 2003 THEN 1 ELSE 0 END) AS "2003",
+
+    SUM(CASE WHEN ANO_LNC = 2004 THEN 1 ELSE 0 END) AS "2004",
+
+    SUM(CASE WHEN ANO_LNC = 2005 THEN 1 ELSE 0 END) AS "2005",
+
+    SUM(CASE WHEN ANO_LNC = 2006 THEN 1 ELSE 0 END) AS "2006",
+
+    SUM(CASE WHEN ANO_LNC = 2007 THEN 1 ELSE 0 END) AS "2007",
+
+    SUM(CASE WHEN ANO_LNC = 2008 THEN 1 ELSE 0 END) AS "2008",
+
+    SUM(CASE WHEN ANO_LNC = 2009 THEN 1 ELSE 0 END) AS "2009",
+
+    SUM(CASE WHEN ANO_LNC = 2010 THEN 1 ELSE 0 END) AS "2010",
+
+    SUM(CASE WHEN ANO_LNC = 2011 THEN 1 ELSE 0 END) AS "2011",
+
+    SUM(CASE WHEN ANO_LNC = 2012 THEN 1 ELSE 0 END) AS "2012",
+
+    SUM(CASE WHEN ANO_LNC = 2013 THEN 1 ELSE 0 END) AS "2013",
+
+    SUM(CASE WHEN ANO_LNC = 2014 THEN 1 ELSE 0 END) AS "2014",
+
+    SUM(CASE WHEN ANO_LNC = 2015 THEN 1 ELSE 0 END) AS "2015",
+
+    SUM(CASE WHEN ANO_LNC = 2016 THEN 1 ELSE 0 END) AS "2016",
+
+    SUM(CASE WHEN ANO_LNC = 2017 THEN 1 ELSE 0 END) AS "2017",
+
+    SUM(CASE WHEN ANO_LNC = 2018 THEN 1 ELSE 0 END) AS "2018",
+
+    SUM(CASE WHEN ANO_LNC = 2019 THEN 1 ELSE 0 END) AS "2019",
+
+    SUM(CASE WHEN ANO_LNC = 2020 THEN 1 ELSE 0 END) AS "2020",
+
+    SUM(CASE WHEN ANO_LNC = 2021 THEN 1 ELSE 0 END) AS "2021",
+
+    SUM(CASE WHEN ANO_LNC = 2022 THEN 1 ELSE 0 END) AS "2022",
+
+    SUM(CASE WHEN ANO_LNC = 2023 THEN 1 ELSE 0 END) AS "2023",
+
+    SUM(CASE WHEN ANO_LNC = 2024 THEN 1 ELSE 0 END) AS "2024",
+
+    SUM(CASE WHEN ANO_LNC = 2025 THEN 1 ELSE 0 END) AS "2025",
+
+    -- Total Geral
+
+    COUNT(SRK_JGO) AS TOTAL_GERAL
+
+FROM DADOS_BASE
+
+GROUP BY NME_GEN
+
+ORDER BY TOTAL_GERAL DESC
+
+LIMIT 25;
 
 
 -- ----------------------------------------------------------------------------
@@ -216,9 +287,9 @@ ORDER BY QTD_JOGOS_CAROS DESC
 LIMIT 10;
 
 
--- ----------------------------------------------------------------------------
--- 10. A ESTRATÉGIA DO "OCEANO AZUL" (ALTA NOTA, BAIXA CONCORRÊNCIA)
--- ----------------------------------------------------------------------------
+-- ----------------------------------------------------------------------------------------------
+-- 10. A ESTRATÉGIA DO "OCEANO AZUL" (ALTA NOTA, BAIXA CONCORRÊNCIA) E A FUGA DO "OCEANO VERMELHO"
+-- ----------------------------------------------------------------------------------------------
 WITH NICHO_STATS AS (
     SELECT 
         DG.NME_GEN AS GENERO,
@@ -240,4 +311,7 @@ SELECT
     END AS STATUS_MERCADO
 FROM NICHO_STATS
 WHERE VOLUME > 50
-ORDER BY QUALIDADE DESC, VOLUME ASC;
+ORDER BY STATUS_MERCADO DESC, VOLUME ASC
+LIMIT 25;
+
+
